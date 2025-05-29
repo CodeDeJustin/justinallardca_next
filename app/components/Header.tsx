@@ -1,8 +1,8 @@
-// app/components/Header.tsx
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"; // <-- AJOUTÉ
 import Link from "next/link";
-import ThemeToggle from "./ThemeToggle"; // <== ici
+import ThemeToggle from "./ThemeToggle";
 import { Menu, X } from "lucide-react";
 import styles from "./header.module.css";
 import { useState, useRef, useEffect } from "react";
@@ -50,9 +50,7 @@ export default function Header() {
   return (
     <header className={styles.cover}>
       <nav className={styles.nav}>
-        {/* Le bouton theme toujours visible */}
         <ThemeToggle />
-        {/* Le menu hamburger */}
         <Dialog.Root open={open}>
           <Dialog.Trigger asChild>
             <button
@@ -76,6 +74,11 @@ export default function Header() {
               onPointerDownOutside={handleClose}
               onEscapeKeyDown={handleClose}
             >
+              {/* Titre accessible (invisible) pour a11y */}
+              <Dialog.Title asChild>
+                <VisuallyHidden>Menu principal</VisuallyHidden>
+              </Dialog.Title>
+
               <Dialog.Close asChild>
                 <button
                   className={styles.close}
