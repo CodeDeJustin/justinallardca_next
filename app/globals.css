@@ -1,0 +1,161 @@
+/*********************/
+/* CLASSES GÉNÉRALES */
+/*********************/
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+:root {
+  --font: Arial, sans-serif;
+  --font-outils: "ROBOTO", sans-serif;
+  --font-outils-nav: "Josefin Sans", sans-serif;
+
+  /* CLAIR */
+  --background-color: #fefefe;
+  --color-vertical-line: #3576e2;
+  --color-funky: #ff0266;
+  --color-funky-soft: #7f4a88;
+  --color-header-image: #e4e4e4;
+  --color-header-title: #ffffff;
+  --color-header-description: #d3d3d3;
+  --color-header-icons: #ffffff;
+  --color-header-bg: rgba(28, 31, 37, 0.93);
+  --color-header-link: #ffffff;
+  --color-header-link-hover: #3576e2;
+  --color-polygon: #e4e4e4;
+  --color-polygon-text: #505050;
+  --color-hamburger-background-menu: #333333f2;
+  --color-hamburger-link: #e4e4e4;
+  --text-color: #333333;
+  --color-footer-background: #333333;
+  --color-footer-text: #ffffff;
+
+  /* SOMBRE */
+  --dark-background-color: #1e1f26;
+  --dark-color-vertical-line: #3576e2;
+  --dark-color-funky: #ff0266;
+  --dark-color-funky-soft: #faebd7;
+  --dark-color-header-image: #e4e4e4;
+  --dark-color-header-title: #ffffff;
+  --dark-color-header-description: #d3d3d3;
+  --dark-color-header-icons: #ffffff;
+  --color-header-bg: rgba(28, 31, 37, 0.93);
+  --color-header-link: #ffffff;
+  --color-header-link-hover: #3576e2;
+  --dark-polygon-color: #2f3e55;
+  --dark-polygon-color-text: #e8e8e8;
+  --dark-color-hamburger-background-menu: #333333f2;
+  --dark-color-hamburger-link: #e4e4e4;
+  --dark-text-color: #cccccc;
+  --dark-color-footer-background: #383d48;
+  --dark-color-footer-text: #f5f5f5;
+}
+
+body[data-theme="dark"] {
+  --background-color: var(--dark-background-color);
+  --color-vertical-line: var(--dark-color-vertical-line);
+  --color-funky: var(--dark-color-funky);
+  --color-funky-soft: var(--dark-color-funky-soft);
+  --color-header-image: var(--dark-color-header-image);
+  --color-header-title: var(--dark-color-header-title);
+  --color-header-description: var(--dark-color-header-description);
+  --color-header-icons: var(--dark-color-header-icons);
+  --color-polygon: var(--dark-polygon-color);
+  --color-polygon-text: var(--dark-polygon-color-text);
+  --color-hamburger-background-menu: var(
+    --dark-color-hamburger-background-menu
+  );
+  --color-hamburger-link: var(--dark-color-hamburger-link);
+  --text-color: var(--dark-text-color);
+  --color-footer-background: var(--dark-color-footer-background);
+  --color-footer-text: var(--dark-color-footer-text);
+}
+
+.transition-enabled {
+  transition: background-color 0.5s ease, color 0.5s ease,
+    border-color 0.5s ease, fill 0.5s ease;
+}
+
+.transition-enabled .section,
+.transition-enabled div.separateur,
+.transition-enabled .section-polygone-haut,
+.transition-enabled .section-polygone-haut p,
+.transition-enabled h2,
+.transition-enabled img.col-contenu,
+.transition-enabled .col-contenu-img,
+.transition-enabled .profile-pic,
+.transition-enabled div.col-contenu,
+.transition-enabled .clickable-link {
+  transition: background-color 0.5s ease, color 0.5s ease,
+    border-color 0.5s ease, fill 0.5s ease;
+}
+
+.clickable-link:hover,
+.clickable-link:focus {
+  color: var(--text-color);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  background-color: var(--background-color);
+  background: var(--background-color);
+  font-family: var(--font);
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+main {
+  flex: 1;
+}
+
+img {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Headless UI backdrop global obligatoire */
+.headlessui-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.5
+  ); /* Couleur sombre semi-transparente propre */
+  animation: fadeInOverlay 0.2s ease-in-out;
+  z-index: 240;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
