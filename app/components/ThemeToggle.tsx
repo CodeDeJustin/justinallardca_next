@@ -6,18 +6,18 @@ import styles from "./theme-toggle.module.css";
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
+  const [userPref, setUserPref] = useState<"light" | "dark" | null>(null);
 
   // Applique le thème à l'hydratation (SSR friendly)
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
-      const local = localStorage.getItem("theme");
+      const local = localStorage.getItem("theme") as "light" | "dark" | null;
       const system = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
-      setTheme(
-        local === "dark" || (!local && system === "dark") ? "dark" : "light"
-      );
+      setUserPref(local);
+      setTheme(local ?? system);
     }
   }, []);
 
@@ -29,16 +29,25 @@ export default function ThemeToggle() {
     } else {
       document.body.removeAttribute("data-theme");
     }
-    if (typeof window !== "undefined") {
-      localStorage.setItem("theme", theme);
-    }
     const t = setTimeout(() => {
       document.body.classList.remove("transition-enabled");
     }, 520);
     return () => clearTimeout(t);
   }, [theme, mounted]);
 
-  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  useEffect(() => {
+    if (userPref && typeof window !== "undefined") {
+      localStorage.setItem("theme", userPref);
+    }
+  }, [userPref]);
+
+  const toggle = () => {
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+      setUserPref(next);
+      return next;
+    });
+  };
 
   // On cache l’icône côté serveur pour éviter le “flicker”
   if (!mounted) return <span className={styles.themeToggle} />;
