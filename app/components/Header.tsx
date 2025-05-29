@@ -1,6 +1,8 @@
+// app/components/Header.tsx
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle"; // <== ici
 import { Menu, X } from "lucide-react";
 import styles from "./header.module.css";
 import { useState, useRef, useEffect } from "react";
@@ -25,7 +27,7 @@ export default function Header() {
   useEffect(() => {
     if (open && !closing) {
       setEntering(true);
-      const t = setTimeout(() => setEntering(false), 20); // 1 tick (~20ms)
+      const t = setTimeout(() => setEntering(false), 20);
       return () => clearTimeout(t);
     }
   }, [open, closing]);
@@ -42,12 +44,15 @@ export default function Header() {
     closingTimeout.current = setTimeout(() => {
       setOpen(false);
       setClosing(false);
-    }, 340); // doit matcher la durée CSS
+    }, 340);
   };
 
   return (
     <header className={styles.cover}>
       <nav className={styles.nav}>
+        {/* Le bouton theme toujours visible */}
+        <ThemeToggle />
+        {/* Le menu hamburger */}
         <Dialog.Root open={open}>
           <Dialog.Trigger asChild>
             <button
