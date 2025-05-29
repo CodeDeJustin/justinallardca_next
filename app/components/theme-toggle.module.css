@@ -16,6 +16,7 @@
   background: none;
   border: none;
   cursor: pointer;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +51,7 @@
 }
 
 .themeToggle:hover .icon,
-.themeToggle:focus .icon {
+.themeToggle:focus-visible .icon {
   transform: rotate(26deg) scale(1.1);
   color: var(--color-header-link-hover, #ffd700);
 }
