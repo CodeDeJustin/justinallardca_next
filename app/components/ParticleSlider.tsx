@@ -1,781 +1,291 @@
-//******************************************/
-// CODE SOURCE DES PARTICULES SLIDER (titre)
-//******************************************/
-/* -----------------------------------------------
-/* Justin Allard - justinallard.ca
-/* MIT license: https://opensource.org/licenses/MIT
-/* v1.0.0 - 2014-07-01
-/* ----------------------------------------------- */
+import React, { useEffect, useRef, useCallback } from 'react';
 
-function ParticleSlider(configurationParticleSlider) {
-  var particleSlider = this;
-
-  // INITIALISATION DES PROPRIÉTÉS PAR DÉFAUT
-  particleSlider.sliderId = "particle-slider";
-  particleSlider.color = "#FFFFFF";
-  particleSlider.hoverColor = "#8888FF";
-  particleSlider.width = 0;
-  particleSlider.height = 20;
-  particleSlider.ptlGap = 0;
-  particleSlider.ptlSize = 1;
-  particleSlider.slideDelay = 10;
-  particleSlider.arrowPadding = 10;
-  particleSlider.showArrowControls = true;
-  particleSlider.onNextSlide = null;
-  particleSlider.onWidthChange = null;
-  particleSlider.onHeightChange = null;
-  particleSlider.onSizeChange = null;
-  particleSlider.monochrome = false;
-  particleSlider.mouseForce = 5000;
-  particleSlider.restless = true;
-  particleSlider.imgs = [];
-
-  // APPLICATION DE LA CONFIGURATION PERSONNALISÉE
-  if (configurationParticleSlider) {
-    var configKeys = [
-      "color",
-      "hoverColor",
-      "width",
-      "height",
-      "ptlGap",
-      "ptlSize",
-      "slideDelay",
-      "arrowPadding",
-      "sliderId",
-      "showArrowControls",
-      "onNextSlide",
-      "monochrome",
-      "mouseForce",
-      "restless",
-      "imgs",
-      "onSizeChange",
-      "onWidthChange",
-      "onHeightChange",
-    ];
-    for (var i = 0, len = configKeys.length; i < len; i++) {
-      if (configurationParticleSlider[configKeys[i]]) {
-        particleSlider[configKeys[i]] =
-          configurationParticleSlider[configKeys[i]];
-      }
-    }
-  }
-
-  // INITIALISATION DES ÉLÉMENTS DOM
-  particleSlider.$container = particleSlider.$("#" + particleSlider.sliderId);
-  particleSlider.$$children = particleSlider.$container.childNodes;
-  particleSlider.$controlsContainer = particleSlider.$(".controls");
-  particleSlider.$$slides = particleSlider.$(
-    ".slide",
-    particleSlider.$(".slides").childNodes,
-    true
-  );
-  particleSlider.$controlLeft = null;
-  particleSlider.$controlRight = null;
-  particleSlider.$canv = particleSlider.$(".draw");
-
-  // CRÉATION DES CANVAS CACHÉS
-  particleSlider.$srcCanv = document.createElement("canvas");
-  particleSlider.$srcCanv.style.display = "none";
-  particleSlider.$container.appendChild(particleSlider.$srcCanv);
-
-  particleSlider.$prevCanv = document.createElement("canvas");
-  particleSlider.$prevCanv.style.display = "none";
-  particleSlider.$container.appendChild(particleSlider.$prevCanv);
-
-  particleSlider.$nextCanv = document.createElement("canvas");
-  particleSlider.$nextCanv.style.display = "none";
-  particleSlider.$container.appendChild(particleSlider.$nextCanv);
-
-  particleSlider.$overlay = document.createElement("p");
-  particleSlider.$container.appendChild(particleSlider.$overlay);
-
-  particleSlider.imgControlPrev = null;
-  particleSlider.imgControlNext = null;
-
-  if (particleSlider.$$slides.length <= 1) {
-    particleSlider.showArrowControls = false;
-  }
-
-  if (particleSlider.$controlsContainer && particleSlider.showArrowControls) {
-    particleSlider.$controlLeft = particleSlider.$(
-      ".left",
-      particleSlider.$controlsContainer.childNodes
-    );
-    particleSlider.$controlRight = particleSlider.$(
-      ".right",
-      particleSlider.$controlsContainer.childNodes
-    );
-    particleSlider.imgControlPrev = new Image();
-    particleSlider.imgControlNext = new Image();
-
-    particleSlider.imgControlPrev.onload = function () {
-      particleSlider.$prevCanv.height = this.height;
-      particleSlider.$prevCanv.width = this.width;
-      particleSlider.loadingStep();
-    };
-
-    particleSlider.imgControlNext.onload = function () {
-      particleSlider.$nextCanv.height = this.height;
-      particleSlider.$nextCanv.width = this.width;
-      particleSlider.loadingStep();
-    };
-
-    particleSlider.imgControlPrev.src =
-      particleSlider.$controlLeft.getAttribute("data-src");
-    particleSlider.imgControlNext.src =
-      particleSlider.$controlRight.getAttribute("data-src");
-  }
-
-  particleSlider.width =
-    particleSlider.width || particleSlider.$container.clientWidth;
-  particleSlider.height =
-    particleSlider.height || particleSlider.$container.clientHeight;
-
-  particleSlider.mouseDownRegion = 0;
-  particleSlider.colorArr = particleSlider.parseColor(particleSlider.color);
-  particleSlider.hoverColorArr = particleSlider.parseColor(
-    particleSlider.hoverColor
-  );
-  particleSlider.mx = -1;
-  particleSlider.my = -1;
-  particleSlider.swipeOffset = 0;
-  particleSlider.cw = particleSlider.getCw();
-  particleSlider.ch = particleSlider.getCh();
-  particleSlider.frame = 0;
-  particleSlider.nextSlideTimer = false;
-  particleSlider.currImg = 0;
-  particleSlider.lastImg = 0;
-  particleSlider.imagesLoaded = 0;
-  particleSlider.pxlBuffer = { first: null };
-  particleSlider.recycleBuffer = { first: null };
-  particleSlider.ctx = particleSlider.$canv.getContext("2d");
-  particleSlider.srcCtx = particleSlider.$srcCanv.getContext("2d");
-  particleSlider.prevCtx = particleSlider.$prevCanv.getContext("2d");
-  particleSlider.nextCtx = particleSlider.$nextCanv.getContext("2d");
-  particleSlider.$canv.width = particleSlider.cw;
-  particleSlider.$canv.height = particleSlider.ch;
-
-  // GESTION DES ÉVÉNEMENTS
-  particleSlider.$canv.onmouseout = function () {
-    particleSlider.mx = -1;
-    particleSlider.my = -1;
-    particleSlider.mouseDownRegion = 0;
-  };
-
-  particleSlider.$canv.onmousemove = function (event) {
-    function calculateOffset(element) {
-      var offsetX = 0,
-        offsetY = 0;
-      if (element) {
-        offsetX = element.offsetLeft;
-        offsetY = element.offsetTop;
-        var body = document.getElementsByTagName("body")[0];
-        while (element.offsetParent && element != body) {
-          offsetX += element.offsetParent.offsetLeft;
-          offsetY += element.offsetParent.offsetTop;
-          element = element.offsetParent;
-        }
-      }
-      this.x = offsetX;
-      this.y = offsetY;
-    }
-
-    var offset = new calculateOffset(particleSlider.$container);
-    particleSlider.mx =
-      event.clientX -
-      offset.x +
-      document.body.scrollLeft +
-      document.documentElement.scrollLeft;
-    particleSlider.my =
-      event.clientY -
-      offset.y +
-      document.body.scrollTop +
-      document.documentElement.scrollTop;
-  };
-
-  particleSlider.$canv.onmousedown = function () {
-    if (particleSlider.imgs.length > 1) {
-      var region = 0;
-      if (
-        particleSlider.mx >= 0 &&
-        particleSlider.mx <
-          particleSlider.arrowPadding * 2 + particleSlider.$prevCanv.width
-      ) {
-        region = -1;
-      } else if (
-        particleSlider.mx > 0 &&
-        particleSlider.mx >
-          particleSlider.cw -
-            (particleSlider.arrowPadding * 2 + particleSlider.$nextCanv.width)
-      ) {
-        region = 1;
-      }
-      particleSlider.mouseDownRegion = region;
-    }
-  };
-
-  particleSlider.$canv.onmouseup = function () {
-    if (particleSlider.imgs.length > 1) {
-      var direction = "";
-      if (
-        particleSlider.mx >= 0 &&
-        particleSlider.mx <
-          particleSlider.arrowPadding * 2 + particleSlider.$prevCanv.width
-      ) {
-        direction = -1;
-      } else if (
-        particleSlider.mx > 0 &&
-        particleSlider.mx >
-          particleSlider.cw -
-            (particleSlider.arrowPadding * 2 + particleSlider.$nextCanv.width)
-      ) {
-        direction = 1;
-      }
-      if (direction !== 0 && particleSlider.mouseDownRegion !== 0) {
-        if (direction !== particleSlider.mouseDownRegion) direction *= -1;
-        if (particleSlider.nextSlideTimer)
-          clearTimeout(particleSlider.nextSlideTimer);
-        particleSlider.nextSlide(direction);
-        particleSlider.mouseDownRegion = 0;
-      }
-    }
-  };
-
-  // CHARGEMENT DES IMAGES ET DÉMARRAGE DE L'ANIMATION
-  if (particleSlider.imgs.length === 0) {
-    for (var i = 0, len = particleSlider.$$slides.length; i < len; i++) {
-      var img = new Image();
-      particleSlider.imgs.push(img);
-      img.src = particleSlider.$$slides[i].getAttribute("data-src");
-    }
-  }
-
-  if (particleSlider.imgs.length > 0) {
-    particleSlider.imgs[0].onload = function () {
-      particleSlider.loadingStep();
-    };
-  }
-
-  particleSlider.requestAnimationFrame(function () {
-    particleSlider.nextFrame();
-  });
+export interface ParticleSliderProps {
+  ptlGap?: number;
+  ptlSize?: number;
+  color?: string;
+  hoverColor?: string;
+  slideDelay?: number;
+  arrowPadding?: number;
+  showArrowControls?: boolean;
+  onNextSlide?: (index: number) => void;
+  onWidthChange?: (width: number) => void;
+  onHeightChange?: (height: number) => void;
+  onSizeChange?: (width: number, height: number) => void;
+  monochrome?: boolean;
+  mouseForce?: number;
+  restless?: boolean;
+  imgs?: string[];
+  slidesHTML?: string[];
+  arrowLeftImg?: string;
+  arrowRightImg?: string;
 }
 
-// FONCTIONS ET PROTOTYPES SUPPLÉMENTAIRES
-var Particle = function (particleSlider) {
-  this.ps = particleSlider;
-  this.ttl = null;
-  this.color = particleSlider.colorArr;
-  this.next = null;
-  this.prev = null;
-  this.gravityX = 0;
-  this.gravityY = 0;
-  this.x = Math.random() * particleSlider.cw;
-  this.y = Math.random() * particleSlider.ch;
-  this.velocityX = Math.random() * 10 - 5;
-  this.velocityY = Math.random() * 10 - 5;
-};
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  gx: number;
+  gy: number;
+  ttl: number | null;
+  color: number[] | (() => number[]);
+  opacity?: number;
+}
 
-Particle.prototype.move = function () {
-  var particleSlider = this.ps,
-    particle = this;
+const isMobile = () => typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent);
 
-  if (this.ttl != null && this.ttl-- <= 0) {
-    particleSlider.swapList(
-      particle,
-      particleSlider.pxlBuffer,
-      particleSlider.recycleBuffer
-    );
-    this.ttl = null;
-  } else {
-    var deltaX = this.gravityX + particleSlider.swipeOffset - this.x,
-      deltaY = this.gravityY - this.y,
-      distance = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2)),
-      angle = Math.atan2(deltaY, deltaX),
-      acceleration = distance * 0.01;
-    if (particleSlider.restless) {
-      acceleration += Math.random() * 0.1 - 0.05;
-    } else if (acceleration < 0.01) {
-      this.x = this.gravityX + 0.25;
-      this.y = this.gravityY + 0.25;
-    }
-    var mouseAcceleration = 0,
-      mouseAngle = 0;
-    if (particleSlider.mx >= 0 && particleSlider.mouseForce) {
-      var deltaMouseX = this.x - particleSlider.mx,
-        deltaMouseY = this.y - particleSlider.my;
-      mouseAcceleration = Math.min(
-        particleSlider.mouseForce /
-          (Math.pow(deltaMouseX, 2) + Math.pow(deltaMouseY, 2)),
-        particleSlider.mouseForce
-      );
-      mouseAngle = Math.atan2(deltaMouseY, deltaMouseX);
-      if (typeof this.color == "function") {
-        mouseAngle += Math.PI;
-        mouseAcceleration *= 0.001 + Math.random() * 0.1 - 0.05;
+const ParticleSlider: React.FC<ParticleSliderProps> = ({
+  ptlGap = isMobile() ? 2 : 0,
+  ptlSize = isMobile() ? 2 : 1,
+  color = '#FFFFFF',
+  // hoverColor = '#8888FF',
+  slideDelay = 10,
+  arrowPadding = 10,
+  showArrowControls = true,
+  onNextSlide,
+  onWidthChange,
+  onHeightChange,
+  onSizeChange,
+  monochrome = false,
+  mouseForce = isMobile() ? 3000 : 5000,
+  restless = true,
+  imgs = [],
+  arrowLeftImg,
+  arrowRightImg,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const srcCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const currImgIndex = useRef(0);
+  const images = useRef<HTMLImageElement[]>([]);
+  
+
+  const arrowLeft = useRef<HTMLImageElement | null>(null);
+  const arrowRight = useRef<HTMLImageElement | null>(null);
+
+  const particlesRef = useRef<Particle[]>([]);
+  const mouse = useRef({ mx: -1, my: -1, downRegion: 0 });
+  const lastSize = useRef({ width: 0, height: 0 });
+
+  const initializeSourceParticles = useCallback((img: HTMLImageElement) => {
+    const srcCanvas = srcCanvasRef.current;
+    srcCanvas.width = img.width;
+    srcCanvas.height = img.height;
+    const srcCtx = srcCanvas.getContext('2d');
+    if (!srcCtx || !canvasRef.current) return;
+    srcCtx.clearRect(0, 0, img.width, img.height);
+    srcCtx.drawImage(img, 0, 0);
+
+    const imgData = srcCtx.getImageData(0, 0, img.width, img.height);
+    const newParticles: Particle[] = [];
+    for (let x = 0; x < imgData.width; x += ptlGap + 1) {
+      for (let y = 0; y < imgData.height; y += ptlGap + 1) {
+        const i = (y * imgData.width + x) * 4;
+        if (imgData.data[i + 3] > 0) {
+          const colorVal = monochrome ? parseColor(color) : [
+            imgData.data[i],
+            imgData.data[i + 1],
+            imgData.data[i + 2],
+            imgData.data[i + 3],
+          ];
+          newParticles.push({
+            x: Math.random() * canvasRef.current.width,
+            y: Math.random() * canvasRef.current.height,
+            vx: 0,
+            vy: 0,
+            gx: (canvasRef.current.width - img.width) / 2 + x,
+            gy: (canvasRef.current.height - img.height) / 2 + y,
+            ttl: null,
+            color: colorVal,
+          });
+        }
       }
     }
-    this.velocityX +=
-      acceleration * Math.cos(angle) + mouseAcceleration * Math.cos(mouseAngle);
-    this.velocityY +=
-      acceleration * Math.sin(angle) + mouseAcceleration * Math.sin(mouseAngle);
-    this.velocityX *= 0.92;
-    this.velocityY *= 0.92;
-    this.x += this.velocityX;
-    this.y += this.velocityY;
-  }
-};
+    particlesRef.current = newParticles;
+  }, [color, monochrome, ptlGap]);
 
-ParticleSlider.prototype.Particle = Particle;
+  const nextSlide = useCallback(() => {
+    if (imgs.length < 2) return;
+    currImgIndex.current = (currImgIndex.current + 1) % imgs.length;
+    initializeSourceParticles(images.current[currImgIndex.current]);
+    if (onNextSlide) onNextSlide(currImgIndex.current);
+  }, [imgs, initializeSourceParticles, onNextSlide]);
 
-ParticleSlider.prototype.swapList = function (
-  particle,
-  sourceBuffer,
-  destinationBuffer
-) {
-  var particleSlider = this;
-  if (particle == null) {
-    particle = new particleSlider.Particle(particleSlider);
-  } else if (sourceBuffer.first == particle) {
-    if (particle.next != null) {
-      particle.next.prev = null;
-      sourceBuffer.first = particle.next;
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvasRef.current = canvas;
+    container.appendChild(canvas);
+
+    const resizeCanvas = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+
+      if (lastSize.current.width !== width && onWidthChange) onWidthChange(width);
+      if (lastSize.current.height !== height && onHeightChange) onHeightChange(height);
+      if ((lastSize.current.width !== width || lastSize.current.height !== height) && onSizeChange) onSizeChange(width, height);
+
+      lastSize.current = { width, height };
+      if (imgs.length > 0 && images.current[currImgIndex.current]) {
+        initializeSourceParticles(images.current[currImgIndex.current]);
+      }
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [imgs.length, onWidthChange, onHeightChange, onSizeChange, initializeSourceParticles]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas || !ctxRef.current) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctxRef.current = ctx;
+
+    if (arrowLeftImg) {
+      arrowLeft.current = new Image();
+      arrowLeft.current.src = arrowLeftImg;
+    }
+    if (arrowRightImg) {
+      arrowRight.current = new Image();
+      arrowRight.current.src = arrowRightImg;
+    }
+
+    if (imgs.length > 0) {
+      imgs.forEach((src, index) => {
+        const img = new Image();
+        img.onload = () => {
+          if (index === 0) initializeSourceParticles(img);
+        };
+        img.src = src;
+        images.current.push(img);
+      });
     } else {
-      sourceBuffer.first = null;
-    }
-  } else if (particle.next == null) {
-    particle.prev.next = null;
-  } else {
-    particle.prev.next = particle.next;
-    particle.next.prev = particle.prev;
-  }
-  if (destinationBuffer.first == null) {
-    destinationBuffer.first = particle;
-    particle.prev = null;
-    particle.next = null;
-  } else {
-    particle.next = destinationBuffer.first;
-    destinationBuffer.first.prev = particle;
-    destinationBuffer.first = particle;
-    particle.prev = null;
-  }
-};
-
-ParticleSlider.prototype.parseColor = function (color) {
-  var colorArray,
-    color = color.replace(" ", "");
-  if (
-    (colorArray = /^#([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})/.exec(color))
-  ) {
-    colorArray = [
-      parseInt(colorArray[1], 16),
-      parseInt(colorArray[2], 16),
-      parseInt(colorArray[3], 16),
-    ];
-  } else if (
-    (colorArray = /^#([\da-fA-F])([\da-fA-F])([\da-fA-F])/.exec(color))
-  ) {
-    colorArray = [
-      parseInt(colorArray[1], 16) * 17,
-      parseInt(colorArray[2], 16) * 17,
-      parseInt(colorArray[3], 16) * 17,
-    ];
-  } else if (
-    (colorArray = /^rgba\(([\d]+),([\d]+),([\d]+),([\d]+|[\d]*.[\d]+)\)/.exec(
-      color
-    ))
-  ) {
-    colorArray = [
-      +colorArray[1],
-      +colorArray[2],
-      +colorArray[3],
-      +colorArray[4],
-    ];
-  } else if ((colorArray = /^rgb\(([\d]+),([\d]+),([\d]+)\)/.exec(color))) {
-    colorArray = [+colorArray[1], +colorArray[2], +colorArray[3]];
-  } else {
-    return null;
-  }
-  if (isNaN(colorArray[3])) colorArray[3] = 1;
-  colorArray[3] *= 255;
-  return colorArray;
-};
-
-ParticleSlider.prototype.loadingStep = function () {
-  var particleSlider = this;
-  particleSlider.imagesLoaded++;
-  if (particleSlider.imagesLoaded >= 3 || !particleSlider.showArrowControls) {
-    particleSlider.resize();
-    if (particleSlider.slideDelay > 0) {
-      particleSlider.nextSlideTimer = setTimeout(function () {
-        particleSlider.nextSlide();
-      }, 1000 * particleSlider.slideDelay);
-    }
-  }
-};
-
-ParticleSlider.prototype.$ = function (selector, children, all) {
-  var particleSlider = this;
-  if (selector[0] == ".") {
-    var className = selector.substr(1);
-    if (!children) children = particleSlider.$$children;
-    var elements = [];
-    for (var i = 0, len = children.length; i < len; i++) {
-      if (children[i].className && children[i].className == className) {
-        elements.push(children[i]);
-      }
-    }
-    return elements.length == 0
-      ? null
-      : elements.length == 1 && !all
-      ? elements[0]
-      : elements;
-  }
-  return document.getElementById(selector.substr(1));
-};
-
-ParticleSlider.prototype.nextFrame = function () {
-  var particleSlider = this;
-  if (
-    (particleSlider.mouseDownRegion == 1 &&
-      particleSlider.mx < particleSlider.cw / 2) ||
-    (particleSlider.mouseDownRegion == -1 &&
-      particleSlider.mx > particleSlider.cw / 2)
-  ) {
-    particleSlider.swipeOffset = particleSlider.mx - particleSlider.cw / 2;
-  } else {
-    particleSlider.swipeOffset = 0;
-  }
-  var currentParticle = particleSlider.pxlBuffer.first,
-    nextParticle = null;
-  while (currentParticle != null) {
-    nextParticle = currentParticle.next;
-    currentParticle.move();
-    currentParticle = nextParticle;
-  }
-  particleSlider.drawParticles();
-  if (
-    particleSlider.frame++ % 25 == 0 &&
-    (particleSlider.cw != particleSlider.getCw() ||
-      particleSlider.ch != particleSlider.getCh())
-  ) {
-    var newHeight = particleSlider.getCh(),
-      newWidth = particleSlider.getCw();
-    if (
-      particleSlider.ch != newWidth &&
-      typeof particleSlider.onWidthChange == "function"
-    )
-      particleSlider.onWidthChange(particleSlider, newWidth);
-    if (
-      particleSlider.ch != newHeight &&
-      typeof particleSlider.onHeightChange == "function"
-    )
-      particleSlider.onHeightChange(particleSlider, newHeight);
-    if (typeof particleSlider.onSizeChange == "function")
-      particleSlider.onSizeChange(particleSlider, newWidth, newHeight);
-    particleSlider.resize();
-  }
-  setTimeout(function () {
-    particleSlider.requestAnimationFrame(function () {
-      particleSlider.nextFrame();
-    });
-  }, 15);
-};
-
-ParticleSlider.prototype.nextSlide = function (direction) {
-  var particleSlider = this;
-  if (particleSlider.nextSlideTimer != null && particleSlider.imgs.length > 1) {
-    particleSlider.currImg =
-      (particleSlider.currImg +
-        particleSlider.imgs.length +
-        (direction ? direction : 1)) %
-      particleSlider.imgs.length;
-    particleSlider.resize();
-    if (particleSlider.slideDelay > 0) {
-      particleSlider.nextSlideTimer = setTimeout(function () {
-        particleSlider.nextSlide();
-      }, 1000 * particleSlider.slideDelay);
-    }
-  } else if (particleSlider.slideDelay > 0) {
-    particleSlider.nextSlideTimer = setTimeout(function () {
-      particleSlider.nextSlide();
-    }, 1000 * particleSlider.slideDelay);
-  }
-  if (typeof particleSlider.onNextSlide == "function") {
-    particleSlider.onNextSlide(particleSlider.currImg);
-  }
-};
-
-ParticleSlider.prototype.drawParticles = function () {
-  var particleSlider = this,
-    imageData = particleSlider.ctx.createImageData(
-      particleSlider.cw,
-      particleSlider.ch
-    ),
-    data = imageData.data,
-    particle,
-    x,
-    y,
-    pixelIndex,
-    color,
-    currentParticle = particleSlider.pxlBuffer.first;
-  while (currentParticle != null) {
-    x = ~~currentParticle.x;
-    y = ~~currentParticle.y;
-    for (
-      var pixelX = x;
-      pixelX < x + particleSlider.ptlSize &&
-      pixelX >= 0 &&
-      pixelX < particleSlider.cw;
-      pixelX++
-    ) {
-      for (
-        var pixelY = y;
-        pixelY < y + particleSlider.ptlSize &&
-        pixelY >= 0 &&
-        pixelY < particleSlider.ch;
-        pixelY++
-      ) {
-        pixelIndex = (pixelY * imageData.width + pixelX) * 4;
-        color =
-          typeof currentParticle.color == "function"
-            ? currentParticle.color()
-            : currentParticle.color;
-        data[pixelIndex + 0] = color[0];
-        data[pixelIndex + 1] = color[1];
-        data[pixelIndex + 2] = color[2];
-        data[pixelIndex + 3] = color[3];
-      }
-    }
-    currentParticle = currentParticle.next;
-  }
-  imageData.data = data;
-  particleSlider.ctx.putImageData(imageData, 0, 0);
-};
-
-ParticleSlider.prototype.getPixelFromImageData = function (
-  imageData,
-  offsetX,
-  offsetY
-) {
-  var particleSlider = this,
-    particles = [];
-  for (var x = 0; x < imageData.width; x += particleSlider.ptlGap + 1) {
-    for (var y = 0; y < imageData.height; y += particleSlider.ptlGap + 1) {
-      var pixelIndex = (y * imageData.width + x) * 4;
-      if (imageData.data[pixelIndex + 3] > 0) {
-        particles.push({
-          x: offsetX + x,
-          y: offsetY + y,
-          color: particleSlider.monochrome
-            ? [
-                particleSlider.colorArr[0],
-                particleSlider.colorArr[1],
-                particleSlider.colorArr[2],
-                particleSlider.colorArr[3],
-              ]
-            : [
-                imageData.data[pixelIndex],
-                imageData.data[pixelIndex + 1],
-                imageData.data[pixelIndex + 2],
-                imageData.data[pixelIndex + 3],
-              ],
+      for (let i = 0; i < 1000; i++) {
+        particlesRef.current.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: Math.random() * 2 - 1,
+          vy: Math.random() * 2 - 1,
+          gx: 0,
+          gy: 0,
+          ttl: null,
+          color: parseColor(color),
         });
       }
     }
-  }
-  return particles;
-};
 
-ParticleSlider.prototype.initializeSourceParticles = function (forceUpdate) {
-  var particleSlider = this;
-
-  if (particleSlider.imgs.length > 0) {
-    particleSlider.$srcCanv.width =
-      particleSlider.imgs[particleSlider.currImg].width;
-    particleSlider.$srcCanv.height =
-      particleSlider.imgs[particleSlider.currImg].height;
-    particleSlider.srcCtx.clearRect(
-      0,
-      0,
-      particleSlider.$srcCanv.width,
-      particleSlider.$srcCanv.height
-    );
-    particleSlider.srcCtx.drawImage(
-      particleSlider.imgs[particleSlider.currImg],
-      0,
-      0
-    );
-    var particles = particleSlider.getPixelFromImageData(
-      particleSlider.srcCtx.getImageData(
-        0,
-        0,
-        particleSlider.$srcCanv.width,
-        particleSlider.$srcCanv.height
-      ),
-      ~~(particleSlider.cw / 2 - particleSlider.$srcCanv.width / 2),
-      ~~(particleSlider.ch / 2 - particleSlider.$srcCanv.height / 2)
-    );
-
-    if (particleSlider.showArrowControls) {
-      particleSlider.prevCtx.clearRect(
-        0,
-        0,
-        particleSlider.$prevCanv.width,
-        particleSlider.$prevCanv.height
-      );
-      particleSlider.prevCtx.drawImage(particleSlider.imgControlPrev, 0, 0);
-      var prevParticles = particleSlider.getPixelFromImageData(
-        particleSlider.prevCtx.getImageData(
-          0,
-          0,
-          particleSlider.$prevCanv.width,
-          particleSlider.$prevCanv.height
-        ),
-        particleSlider.arrowPadding,
-        ~~(particleSlider.ch / 2 - particleSlider.$prevCanv.height / 2)
-      );
-
-      prevParticles.forEach(function (particle) {
-        particle.color = function () {
-          return particleSlider.mx >= 0 &&
-            particleSlider.mx <
-              particleSlider.arrowPadding * 2 + particleSlider.$prevCanv.width
-            ? particleSlider.hoverColorArr
-            : particleSlider.colorArr;
-        };
-        particles.push(particle);
-      });
-
-      particleSlider.nextCtx.clearRect(
-        0,
-        0,
-        particleSlider.$nextCanv.width,
-        particleSlider.$nextCanv.height
-      );
-      particleSlider.nextCtx.drawImage(particleSlider.imgControlNext, 0, 0);
-      var nextParticles = particleSlider.getPixelFromImageData(
-        particleSlider.nextCtx.getImageData(
-          0,
-          0,
-          particleSlider.$nextCanv.width,
-          particleSlider.$nextCanv.height
-        ),
-        particleSlider.cw -
-          particleSlider.arrowPadding -
-          particleSlider.$nextCanv.width,
-        ~~(particleSlider.ch / 2 - particleSlider.$nextCanv.height / 2)
-      );
-
-      nextParticles.forEach(function (particle) {
-        particle.color = function () {
-          return particleSlider.mx > 0 &&
-            particleSlider.mx >
-              particleSlider.cw -
-                (particleSlider.arrowPadding * 2 +
-                  particleSlider.$nextCanv.width)
-            ? particleSlider.hoverColorArr
-            : particleSlider.colorArr;
-        };
-        particles.push(particle);
-      });
-    }
-
-    if (particleSlider.currImg != particleSlider.lastImg || forceUpdate) {
-      particles.shuffle();
-      particleSlider.lastImg = particleSlider.currImg;
-    }
-
-    var bufferParticle = particleSlider.pxlBuffer.first;
-
-    particles.forEach(function (particle) {
-      var newParticle = null;
-      if (bufferParticle != null) {
-        newParticle = bufferParticle;
-        bufferParticle = bufferParticle.next;
-      } else {
-        particleSlider.swapList(
-          particleSlider.recycleBuffer.first,
-          particleSlider.recycleBuffer,
-          particleSlider.pxlBuffer
-        );
-        newParticle = particleSlider.pxlBuffer.first;
-      }
-      newParticle.gravityX = particle.x;
-      newParticle.gravityY = particle.y;
-      newParticle.color = particle.color;
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.current.mx = e.clientX - rect.left;
+      mouse.current.my = e.clientY - rect.top;
     });
 
-    while (bufferParticle != null) {
-      bufferParticle.ttl = ~~(Math.random() * 10);
-      bufferParticle.gravityY = ~~(particleSlider.ch * Math.random());
-      bufferParticle.gravityX = ~~(particleSlider.cw * Math.random());
-      bufferParticle = bufferParticle.next;
-    }
+    canvas.addEventListener('mouseout', () => {
+      mouse.current.mx = -1;
+      mouse.current.my = -1;
+    });
 
-    particleSlider.$overlay.innerHTML =
-      particleSlider.$$slides[particleSlider.currImg].innerHTML;
-  }
-};
+    canvas.addEventListener('click', (e) => {
+      if (!showArrowControls || imgs.length < 2) return;
+      const x = e.clientX;
+      const canvasWidth = canvas.width;
+      if (x < arrowPadding * 2 + 50) {
+        currImgIndex.current = (currImgIndex.current - 1 + imgs.length) % imgs.length;
+      } else if (x > canvasWidth - arrowPadding * 2 - 50) {
+        currImgIndex.current = (currImgIndex.current + 1) % imgs.length;
+      }
+      initializeSourceParticles(images.current[currImgIndex.current]);
+    });
 
-ParticleSlider.prototype.getCw = function () {
-  var particleSlider = this;
-  return Math.min(
-    document.body.clientWidth,
-    particleSlider.width,
-    particleSlider.$container.clientWidth
-  );
-};
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-ParticleSlider.prototype.getCh = function () {
-  var particleSlider = this;
-  return Math.min(
-    document.body.clientHeight,
-    particleSlider.height,
-    particleSlider.$container.clientHeight
-  );
-};
+      for (const p of particlesRef.current) {
+        const dx = p.gx - p.x;
+        const dy = p.gy - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const accel = dist * 0.01 + (restless ? (Math.random() * 0.1 - 0.05) : 0);
 
-ParticleSlider.prototype.resize = function () {
-  var particleSlider = this;
-  particleSlider.cw = particleSlider.getCw();
-  particleSlider.ch = particleSlider.getCh();
-  particleSlider.$canv.width = particleSlider.cw;
-  particleSlider.$canv.height = particleSlider.ch;
-  particleSlider.initializeSourceParticles(true);
-};
+        let mAccel = 0, mAngle = 0;
+        if (mouse.current.mx >= 0) {
+          const mx = p.x - mouse.current.mx;
+          const my = p.y - mouse.current.my;
+          mAccel = Math.min(mouseForce / (mx * mx + my * my), mouseForce);
+          mAngle = Math.atan2(my, mx);
+        }
 
-ParticleSlider.prototype.setColor = function (color) {
-  var particleSlider = this;
-  particleSlider.colorArr = particleSlider.parseColor(color);
-};
+        p.vx += accel * Math.cos(angle) + mAccel * Math.cos(mAngle);
+        p.vy += accel * Math.sin(angle) + mAccel * Math.sin(mAngle);
+        p.vx *= 0.92;
+        p.vy *= 0.92;
+        p.x += p.vx;
+        p.y += p.vy;
 
-ParticleSlider.prototype.setHoverColor = function (color) {
-  var particleSlider = this;
-  particleSlider.hoverColorArr = particleSlider.parseColor(color);
-};
+        const colorArr = typeof p.color === 'function' ? p.color() : p.color;
+        ctx.fillStyle = `rgba(${colorArr[0]},${colorArr[1]},${colorArr[2]},${colorArr[3] / 255})`;
+        ctx.fillRect(p.x, p.y, ptlSize, ptlSize);
+      }
 
-ParticleSlider.prototype.requestAnimationFrame = function (callback) {
-  var particleSlider = this;
-  var requestAnimationFrameFunction =
-    window.requestAnimationFrame ||
-    window.webkitRequestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.oRequestAnimationFrame ||
-    window.msRequestAnimationFrame ||
-    function (callback) {
-      window.setTimeout(callback, 1000 / 60);
+      if (showArrowControls && arrowLeft.current && arrowRight.current) {
+        if (mouse.current.mx >= 0) {
+          const hoverLeft = mouse.current.mx < arrowPadding * 2 + 50;
+          const hoverRight = mouse.current.mx > canvas.width - arrowPadding * 2 - 50;
+          ctx.globalAlpha = hoverLeft ? 1 : 0.5;
+          ctx.drawImage(arrowLeft.current, arrowPadding, canvas.height / 2 - 25, 50, 50);
+          ctx.globalAlpha = hoverRight ? 1 : 0.5;
+          ctx.drawImage(arrowRight.current, canvas.width - arrowPadding - 50, canvas.height / 2 - 25, 50, 50);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      requestAnimationFrame(animate);
     };
-  requestAnimationFrameFunction(callback);
+
+    animate();
+
+    if (slideDelay > 0 && imgs.length > 1) {
+      const interval = setInterval(() => nextSlide(), slideDelay * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [arrowLeftImg, arrowRightImg, color, imgs, nextSlide, ptlSize, mouseForce, restless, showArrowControls, arrowPadding, initializeSourceParticles, slideDelay]);
+
+  function parseColor(input: string): number[] {
+    const hex = input.replace('#', '');
+    if (hex.length === 3) {
+      return [
+        parseInt(hex[0] + hex[0], 16),
+        parseInt(hex[1] + hex[1], 16),
+        parseInt(hex[2] + hex[2], 16),
+        255,
+      ];
+    } else if (hex.length === 6) {
+      return [
+        parseInt(hex.substring(0, 2), 16),
+        parseInt(hex.substring(2, 4), 16),
+        parseInt(hex.substring(4, 6), 16),
+        255,
+      ];
+    }
+    return [255, 255, 255, 255];
+  }
+
+  return <div ref={containerRef} id="ps-container" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 10, pointerEvents: 'none' }} />;
 };
 
-// FONCTION DE MÉLANGE POUR LES TABLEAUX
-Array.prototype.shuffle = function () {
-  var temp, randomIndex;
-  for (var i = 0, len = this.length; i < len; i++) {
-    randomIndex = Math.floor(Math.random() * len);
-    temp = this[i];
-    this[i] = this[randomIndex];
-    this[randomIndex] = temp;
-  }
-};
+export default ParticleSlider;
+
